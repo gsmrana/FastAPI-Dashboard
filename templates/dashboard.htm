@@ -1,0 +1,81 @@
+{% extends "base.htm" %}
+{% block title %}Mediahub Dashboard{% endblock %}
+{% block content %}
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">Portfolio</a>
+      <button id="menu-toggle" class="menu-toggle" aria-label="Toggle Menu">☰</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#portfolio">Portfolio</a></li>
+        <li><a href="#gallery">Gallery</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <header class="hero">
+    <button id="theme-toggle" aria-label="Toggle Dark Mode">🌙</button>
+    <img src="/static/images/profile.png" alt="Your Photo" class="hero-img" />
+    <h1>Hello, I'm <span>GSM Rana</span></h1>
+    <p>Software Engineer • Web Developer • Tech Enthusiast</p>
+    <div class="social-links">
+      <a href="#">LinkedIn</a>
+      <a href="#">GitHub</a>
+      <a href="mailto:you@example.com">Email</a>
+    </div>
+  </header>
+
+  <section class="about" id="about">
+    <h2>About Me</h2>
+    <p>
+      I'm a passionate web developer with a love for building modern, user-friendly websites and applications. I specialize in frontend development with HTML, CSS, and JavaScript.
+    </p>
+  </section>
+
+  <!-- Portfolio Section -->
+  <section class="portfolio" id="portfolio">
+    <h2>My Projects</h2>
+    <div class="project-list">
+      <div class="project">
+        <h3>Portfolio Website</h3>
+        <p>A personal site built with HTML, CSS, and JS. Features dark mode and responsive design.</p>
+        <a href="#" target="_blank">View Project</a>
+      </div>
+      <div class="project">
+        <h3>Weather App</h3>
+        <p>JavaScript app using a weather API to display current conditions in any city.</p>
+        <a href="#" target="_blank">View Project</a>
+      </div>
+      <!-- Add more projects here -->
+    </div>
+  </section>
+
+  <!-- Gallery Section -->
+  <section class="gallery" id="gallery">
+    <h2>Project Gallery</h2>
+    <div class="gallery-grid">
+      <img src="/static/images/project1.png" alt="Project 1" />
+      <img src="/static/images/project2.png" alt="Project 2" />
+      <!-- Add more as needed -->
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section class="contact" id="contact">
+    <h2>Contact Me</h2>
+    <form id="contact-form">
+      <input type="text" name="name" placeholder="Your Name" required />
+      <input type="email" name="email" placeholder="Your Email" required />
+      <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
+      <button type="submit">Send Message</button>
+    </form>
+    <p id="form-response"></p>
+  </section>
+
+  <footer>
+    <p>© 2025 Your Name. All rights reserved.</p>
+  </footer>
+
+  <script src="/static/js/script.js"></script>
+{% endblock %}

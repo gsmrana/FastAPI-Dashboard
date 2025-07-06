@@ -1,10 +1,12 @@
 import os
+import sys
 import time
 import shutil
 import logging
 import uvicorn
+import platform
 from os import path
-from config import Config
+from settings import settings
 from fastapi import ( 
     FastAPI, Request, HTTPException,
     status, UploadFile, Depends, Form, File,
@@ -18,10 +20,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import Base, User
-from auth import (
-    hash_password, verify_password, get_current_user,
-    login_user, logout_user
-)
+from auth import auth_manager
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
@@ -63,10 +62,10 @@ def login(
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not auth_manager.verify_password(password, user.hashed_password):
         return templates.TemplateResponse("login.htm", {"request": request, "msg": "Invalid credentials"})    
-    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)    
-    login_user(response, username, remember=(remember == "yes"))
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)    
+    auth_manager.login_user(response, username, remember=(remember == "yes"))
     return response
 
 @app.get("/register", response_class=HTMLResponse)
@@ -82,37 +81,49 @@ def register(
 ):
     if db.query(User).filter(User.username == username).first():
         return templates.TemplateResponse("login.htm", {"request": request, "msg": "User exists", "register": True})
-    new_user = User(username=username, hashed_password=hash_password(password))
+    new_user = User(username=username, hashed_password=auth_manager.hash_password(password))
     db.add(new_user)
     db.commit()
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    return templates.TemplateResponse("dashboard.htm", {"request": request, "user": user})
-
-@app.get("/dashboard_simple", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    return templates.TemplateResponse("dashboard_simple.htm", {"request": request, "user": user})
-
 @app.get("/logout")
 def logout():
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    logout_user(response)
+    auth_manager.logout_user(response)
     return response
+
+@app.get("/settings")
+def app_settings():
+    content = {
+        "APP_NAME": settings.APP_NAME, 
+        "APP_VERSION": settings.APP_VERSION,
+        "APP_PORT": settings.APP_PORT,
+        "APP_DEBUG": str(settings.APP_DEBUG),
+        "LOG_LEVEL": settings.LOG_LEVEL,
+        "UPLOAD_DIR": settings.UPLOAD_DIR,
+        "DATABASE_URL": settings.DATABASE_URL,
+    }
+    return JSONResponse(content=content, status_code=200)
+
+@app.get("/system")
+def system_info():
+    content = {
+        "Node": platform.node(),
+        "Platform": sys.platform,
+        "OS": platform.platform(),
+        "Version": platform.version(),
+        "Arch": platform.machine(),
+        "CPU": platform.processor(),  
+        "Python": platform.python_version(),        
+    }
+    return JSONResponse(content=content, status_code=200)
 
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
-    files = os.listdir(Config.UPLOAD_DIR)
+    files = os.listdir(settings.UPLOAD_DIR)
     return templates.TemplateResponse("upload.htm", {
         "request": request,
         "files": files,
@@ -125,25 +136,25 @@ def handle_upload(
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
     uploaded_names = []
     for file in files:
         # rename if file already exists
-        file_path = path.join(Config.UPLOAD_DIR, file.filename)
+        file_path = path.join(settings.UPLOAD_DIR, file.filename)
         if path.exists(file_path):
             timestamp = int(time.time())        
             filename = path.splitext(file.filename)[0]
             ext = path.splitext(file.filename)[1]
             new_filename = f"{filename} - {timestamp}{ext}"
-            file_path = path.join(Config.UPLOAD_DIR, new_filename)
+            file_path = path.join(settings.UPLOAD_DIR, new_filename)
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         uploaded_names.append(file.filename)
 
-    files_list = os.listdir(Config.UPLOAD_DIR)
+    files_list = os.listdir(settings.UPLOAD_DIR)
     return templates.TemplateResponse("upload.htm", {
         "request": request,
         "message": f"Uploaded: {', '.join(uploaded_names)}",
@@ -153,27 +164,27 @@ def handle_upload(
     
 @app.get("/files/{filename}")
 def get_file(filename: str, db: Session = Depends(get_db), request: Request = None):
-    user = get_current_user(request, db)
+    user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
-    file_path = path.join(Config.UPLOAD_DIR, filename)
+    file_path = path.join(settings.UPLOAD_DIR, filename)
     if not path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path, filename=filename)
 
 @app.get("/delete/{filename}")
 def delete_file(filename: str, db: Session = Depends(get_db), request: Request = None):
-    user = get_current_user(request, db)
+    user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
-    file_path = path.join(Config.UPLOAD_DIR, filename)
+    file_path = path.join(settings.UPLOAD_DIR, filename)
     if path.exists(file_path):
         os.remove(file_path)
     return RedirectResponse(url="/upload", status_code=302)
 
 if __name__ == "__main__":
-    logging.info(f"Application: {Config.APP_NAME} {Config.APP_VERSION}")
-    logging.info(f"APP_PORT: {Config.APP_PORT}, DEBUG: {Config.APP_DEBUG}, LOG_LEVEL: {Config.LOG_LEVEL}, ENV: {Config.ENV_PATH}")
-    logging.getLogger().setLevel(Config.LOG_LEVEL)
-    logging.info(f"App listening on http://localhost:{Config.APP_PORT}")
-    uvicorn.run("main:app", host="0.0.0.0", port=int(Config.APP_PORT), reload=Config.APP_DEBUG)
+    logging.info(f"Application: {settings.APP_NAME} {settings.APP_VERSION}")
+    logging.info(f"APP_PORT: {settings.APP_PORT}, DEBUG: {settings.APP_DEBUG}, LOG_LEVEL: {settings.LOG_LEVEL}, ENV: {settings.ENV_PATH}")
+    logging.getLogger().setLevel(settings.LOG_LEVEL)
+    logging.info(f"App listening on http://localhost:{settings.APP_PORT}")
+    uvicorn.run("main:app", host="0.0.0.0", port=int(settings.APP_PORT), reload=settings.APP_DEBUG)

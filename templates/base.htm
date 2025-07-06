@@ -9,6 +9,40 @@
     <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body class="container mt-5">
-    {% block content %}{% endblock %}
+    
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+        <a href="#" class="logo">Home</a>
+        <button id="menu-toggle" class="menu-toggle" aria-label="Toggle Menu">☰</button>
+        <ul class="nav-links" id="nav-links">
+            <li><a href="#about">About</a></li>
+            <li><a href="#portfolio">Portfolio</a></li>
+            <li><a href="#gallery">Gallery</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="/upload" class="btn btn-success mt-3">Upload</a></li>
+            <li><a href="/login" class="btn btn-primary">Login</a></li>
+            <li><a href="/logout" class="btn btn-danger">Logout</a></li>
+        </ul>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container mt-4">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Page Footer -->
+    <footer class="text-center text-muted py-3 mt-5">
+        <p>© 2025 GSM Rana. All rights reserved.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/script.js"></script>
+    {% block script %}
+    {% endblock %}
+
 </body>
 </html>

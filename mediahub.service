@@ -1,0 +1,12 @@
+[Unit]
+Description=FastAPI app with Uvicorn
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/srv/fastapi_app
+ExecStart=/usr/bin/uvicorn main:app --host 127.0.0.1 --port 3000 --reload
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

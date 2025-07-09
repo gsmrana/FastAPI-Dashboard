@@ -42,19 +42,19 @@ def get_db():
         db.close()
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+async def home(request: Request):
     return templates.TemplateResponse("index.htm", {"request": request})
 
 @app.get("/favicon.ico", include_in_schema=False)
-def favicon():
+async def favicon():
     return FileResponse("static/favicon.ico")
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+async def login_page(request: Request):
     return templates.TemplateResponse("login.htm", {"request": request, "msg": ""})
 
 @app.post("/login")
-def login(
+async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
@@ -69,11 +69,11 @@ def login(
     return response
 
 @app.get("/register", response_class=HTMLResponse)
-def register_page(request: Request):
+async def register_page(request: Request):
     return templates.TemplateResponse("register.htm", {"request": request, "msg": "", "register": True})
 
 @app.post("/register")
-def register(
+async def register(
     request: Request, 
     username: str = Form(...), 
     password: str = Form(...), 
@@ -87,13 +87,13 @@ def register(
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 @app.get("/logout")
-def logout():
+async def logout():
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     auth_manager.logout_user(response)
     return response
 
-@app.get("/settings")
-def app_settings():
+@app.get("/api/settings")
+async def app_settings():
     content = {
         "APP_NAME": settings.APP_NAME, 
         "APP_VERSION": settings.APP_VERSION,
@@ -105,8 +105,8 @@ def app_settings():
     }
     return JSONResponse(content=content, status_code=200)
 
-@app.get("/system")
-def system_info():
+@app.get("/api/system")
+async def system_info():
     content = {
         "Node": platform.node(),
         "Platform": sys.platform,
@@ -118,8 +118,26 @@ def system_info():
     }
     return JSONResponse(content=content, status_code=200)
 
+notepad_text = ""
+
+@app.get("/notepad", response_class=HTMLResponse)
+async def notepad_page(request: Request):
+    return templates.TemplateResponse("notepad.htm", {"request": request, "text": notepad_text})
+
+@app.post("/notepad/save")
+async def save_text(textarea: str = Form(...)):
+    global notepad_text
+    notepad_text = textarea
+    return RedirectResponse("/notepad", status_code=303)
+
+@app.post("/notepad/clear")
+async def clear_text():
+    global notepad_text
+    notepad_text = ""
+    return RedirectResponse("/notepad", status_code=303)
+
 @app.get("/upload", response_class=HTMLResponse)
-def upload_page(request: Request, db: Session = Depends(get_db)):
+async def upload_page(request: Request, db: Session = Depends(get_db)):
     user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
@@ -131,7 +149,7 @@ def upload_page(request: Request, db: Session = Depends(get_db)):
     })
     
 @app.post("/upload", response_class=HTMLResponse)
-def handle_upload(
+async def handle_upload(
     request: Request,
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db)
@@ -162,8 +180,8 @@ def handle_upload(
         "user": user,
     })
     
-@app.get("/files/{filename}")
-def get_file(filename: str, db: Session = Depends(get_db), request: Request = None):
+@app.get("/upload/files/{filename}")
+async def get_file(filename: str, db: Session = Depends(get_db), request: Request = None):
     user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
@@ -172,8 +190,8 @@ def get_file(filename: str, db: Session = Depends(get_db), request: Request = No
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path, filename=filename)
 
-@app.get("/delete/{filename}")
-def delete_file(filename: str, db: Session = Depends(get_db), request: Request = None):
+@app.get("/upload/delete/{filename}")
+async def delete_file(filename: str, db: Session = Depends(get_db), request: Request = None):
     user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login")
@@ -182,9 +200,12 @@ def delete_file(filename: str, db: Session = Depends(get_db), request: Request =
         os.remove(file_path)
     return RedirectResponse(url="/upload", status_code=302)
 
+
+logging.info(f"Application: {settings.APP_NAME} v{settings.APP_VERSION}")
+logging.info(f"APP_PORT: {settings.APP_PORT}, DEBUG: {settings.APP_DEBUG}, " + 
+             f"LOG_LEVEL: {settings.LOG_LEVEL}, ENV: {settings.ENV_PATH}")
+logging.getLogger().setLevel(settings.LOG_LEVEL)
+
 if __name__ == "__main__":
-    logging.info(f"Application: {settings.APP_NAME} {settings.APP_VERSION}")
-    logging.info(f"APP_PORT: {settings.APP_PORT}, DEBUG: {settings.APP_DEBUG}, LOG_LEVEL: {settings.LOG_LEVEL}, ENV: {settings.ENV_PATH}")
-    logging.getLogger().setLevel(settings.LOG_LEVEL)
-    logging.info(f"App listening on http://localhost:{settings.APP_PORT}")
+    logging.info(f"{settings.APP_NAME} listening on http://localhost:{settings.APP_PORT}")
     uvicorn.run("main:app", host="0.0.0.0", port=int(settings.APP_PORT), reload=settings.APP_DEBUG)

@@ -1,5 +1,5 @@
 {% extends "base.htm" %}
-{% block title %}Mediahub Register{% endblock %}
+{% block title %}Register - Mediahub{% endblock %}
 {% block content %}
 <h2>{% if register %}Register{% else %}Login{% endif %}</h2>
 <form method="post" action="{% if register %}/register{% else %}/login{% endif %}">

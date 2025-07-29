@@ -2,27 +2,27 @@
 {% block title %}Upload Files - Mediahub{% endblock %}
 {% block content %}
 <h2>Upload Files</h2>
-<form method="post" action="/upload" enctype="multipart/form-data">
+<form method="post" action="/file/upload" enctype="multipart/form-data">
     <div class="mb-3">
         <input class="form-control" type="file" name="files" multiple required>
     </div>
     <button class="btn btn-success" type="submit">Upload</button>
 </form>
-{% if files %}
+{% if filenames %}
 <h4 class="mt-4">Uploaded Files:</h4>
 <ul class="list-group">
-    {% for file in files %}
+    {% for filename in filenames %}
     <li class="list-group-item">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                {% if file.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
-                    <img src="/upload/files/{{ file }}" style="max-height: 60px; margin-right: 10px;" class="me-2">
+                {% if filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
+                    <img src="/file/download/{{ filename }}" style="max-height: 60px; margin-right: 10px;" class="me-2">
                 {% endif %}
-                {{ file }}
+                {{ filename }}
             </div>
             <div>
-                <a href="/upload/delete/{{ file }}" class="btn btn-sm btn-outline-danger">Delete</a>
-                <a href="/upload/files/{{ file }}" class="btn btn-sm btn-outline-primary" target="_blank">Download</a>
+                <a href="/file/delete/{{ filename }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                <a href="/file/download/{{ filename }}" class="btn btn-sm btn-outline-primary" target="_blank">Download</a>
             </div>
         </div>
     </li>

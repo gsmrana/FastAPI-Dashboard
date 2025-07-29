@@ -2,12 +2,13 @@
 {% block title %}Notepad - Mediahub{% endblock %}
 {% block content %}
 <h2>Enter your text</h2>
-    <form action="/notepad/save" method="post">
-        <textarea name="textarea" rows="10" cols="80">{{ text }}</textarea><br><br>
-        <button class="btn btn-success" type="submit">Save</button>
-    </form>
 
-    <form action="/notepad/clear" method="post" style="margin-top:10px;">
-        <button class="btn btn-secondary" type="submit">Clear</button>
-    </form>
+<form action="/notepad/save" method="post">
+    <textarea name="textarea" rows="10" cols="80">{{ text }}</textarea><br><br>
+    <button class="btn btn-success" type="submit">Save</button>
+</form>
+
+<form action="/notepad/clear" method="post" style="margin-top:10px;">
+    <button class="btn btn-secondary" type="submit">Clear</button>
+</form>
 {% endblock %}

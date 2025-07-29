@@ -18,6 +18,8 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from openai import AzureOpenAI
+
 from database import SessionLocal, engine
 from models import Base, User
 from auth import auth_manager
@@ -41,38 +43,62 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("index.htm", {"request": request})
-
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("static/favicon.ico")
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.htm", {"request": request, "msg": ""})
+@app.get("/", response_class=HTMLResponse)
+async def home_page(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    return templates.TemplateResponse("index.htm", {
+        "request": request, 
+        "user": user
+    })
 
-@app.post("/login")
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(
+    request: Request, 
+    back_url: str="/",
+    db: Session = Depends(get_db),
+):
+    if back_url != "/":
+        user = auth_manager.get_current_user(request, db)
+        if user:
+            return RedirectResponse(url=back_url, status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse("login.htm", {
+        "request": request, 
+        "back_url": back_url, 
+        "msg": ""
+    })
+
+@app.post("/login", response_class=RedirectResponse)
 async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
     remember: str = Form(None),
+    back_url: str = Form("/"),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == username).first()
     if not user or not auth_manager.verify_password(password, user.hashed_password):
         return templates.TemplateResponse("login.htm", {"request": request, "msg": "Invalid credentials"})    
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)    
+    response = RedirectResponse(url=back_url, status_code=status.HTTP_302_FOUND)    
     auth_manager.login_user(response, username, remember=(remember == "yes"))
     return response
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.htm", {"request": request, "msg": "", "register": True})
+    return templates.TemplateResponse("register.htm", {
+        "request": request, 
+        "msg": "", 
+        "register": True
+    })
 
-@app.post("/register")
+@app.post("/register", response_class=RedirectResponse)
 async def register(
     request: Request, 
     username: str = Form(...), 
@@ -80,21 +106,102 @@ async def register(
     db: Session = Depends(get_db)
 ):
     if db.query(User).filter(User.username == username).first():
-        return templates.TemplateResponse("login.htm", {"request": request, "msg": "User exists", "register": True})
+        return templates.TemplateResponse("register.htm", {
+            "request": request,
+            "msg": "User exists", 
+            "register": True
+        })
     new_user = User(username=username, hashed_password=auth_manager.hash_password(password))
     db.add(new_user)
     db.commit()
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
 
-@app.get("/logout")
+@app.get("/logout", response_class=RedirectResponse)
 async def logout():
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse("/", status_code=status.HTTP_302_FOUND)
     auth_manager.logout_user(response)
     return response
 
-@app.get("/api/settings")
-async def app_settings():
-    content = {
+@app.get("/users", response_class=HTMLResponse)
+async def users_page(
+    request: Request, db: 
+    Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url=f"/login?back_url={request.url.path}")
+    users = db.query(User).all()
+    db.commit()
+    return templates.TemplateResponse("users.htm", {
+        "request": request,
+        "user": user,
+        "users": users
+        })
+
+@app.get("/user/update/{user_id}", response_class=HTMLResponse)
+async def user_update_page(
+    user_id: int, 
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login") 
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return templates.TemplateResponse("register.htm", {
+        "request": request, 
+        "user": user,
+        "msg": "Upadte user information", 
+        "register": True
+    })
+
+@app.post("/user/update", response_class=RedirectResponse)
+async def user_update(
+    request: Request, 
+    user_id: int = Form(...), 
+    username: str = Form(...), 
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login")    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.username = username
+    user.hashed_password=auth_manager.hash_password(password)
+    db.commit()
+    return RedirectResponse("/users", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/user/delete/{user_id}", response_class=RedirectResponse)
+async def user_delete(
+    user_id: str,
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login")    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return RedirectResponse("/users", status_code=status.HTTP_302_FOUND)
+
+@app.get("/api/settings", response_class=JSONResponse)
+async def app_settings(
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return JSONResponse(content={"detail": "Not Authorized"},
+                            status_code=status.HTTP_401_UNAUTHORIZED)
+    return JSONResponse(content={
         "APP_NAME": settings.APP_NAME, 
         "APP_VERSION": settings.APP_VERSION,
         "APP_PORT": settings.APP_PORT,
@@ -102,12 +209,18 @@ async def app_settings():
         "LOG_LEVEL": settings.LOG_LEVEL,
         "UPLOAD_DIR": settings.UPLOAD_DIR,
         "DATABASE_URL": settings.DATABASE_URL,
-    }
-    return JSONResponse(content=content, status_code=200)
+    })
 
-@app.get("/api/system")
-async def system_info():
-    content = {
+@app.get("/api/system", response_class=JSONResponse)
+async def system_info(
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return JSONResponse(content={"detail": "Not Authorized"}, 
+                            status_code=status.HTTP_401_UNAUTHORIZED)
+    return JSONResponse(content={
         "Node": platform.node(),
         "Platform": sys.platform,
         "OS": platform.platform(),
@@ -115,40 +228,45 @@ async def system_info():
         "Arch": platform.machine(),
         "CPU": platform.processor(),  
         "Python": platform.python_version(),        
-    }
-    return JSONResponse(content=content, status_code=200)
+    })
 
 notepad_text = ""
-
 @app.get("/notepad", response_class=HTMLResponse)
 async def notepad_page(request: Request):
-    return templates.TemplateResponse("notepad.htm", {"request": request, "text": notepad_text})
+    return templates.TemplateResponse("notepad.htm", {
+        "request": request, 
+        "text": notepad_text
+    })
 
-@app.post("/notepad/save")
+@app.post("/notepad/save", response_class=RedirectResponse)
 async def save_text(textarea: str = Form(...)):
     global notepad_text
     notepad_text = textarea
-    return RedirectResponse("/notepad", status_code=303)
+    return RedirectResponse("/notepad", status_code=status.HTTP_303_SEE_OTHER)
 
-@app.post("/notepad/clear")
+@app.post("/notepad/clear", response_class=RedirectResponse)
 async def clear_text():
     global notepad_text
     notepad_text = ""
-    return RedirectResponse("/notepad", status_code=303)
+    return RedirectResponse("/notepad", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/upload", response_class=HTMLResponse)
-async def upload_page(request: Request, db: Session = Depends(get_db)):
+async def upload_page(
+    request: Request, 
+    db: Session = Depends(get_db)
+):
     user = auth_manager.get_current_user(request, db)
     if not user:
-        return RedirectResponse(url="/login")
-    files = os.listdir(settings.UPLOAD_DIR)
+        return RedirectResponse(url=f"/login?back_url={request.url.path}")
+    filenames = os.listdir(settings.UPLOAD_DIR)
     return templates.TemplateResponse("upload.htm", {
         "request": request,
-        "files": files,
         "user": user,
+        "filenames": filenames,
+        "username": user.username,
     })
     
-@app.post("/upload", response_class=HTMLResponse)
+@app.post("/file/upload", response_class=HTMLResponse)
 async def handle_upload(
     request: Request,
     files: list[UploadFile] = File(...),
@@ -175,30 +293,83 @@ async def handle_upload(
     files_list = os.listdir(settings.UPLOAD_DIR)
     return templates.TemplateResponse("upload.htm", {
         "request": request,
-        "message": f"Uploaded: {', '.join(uploaded_names)}",
-        "files": files_list,
         "user": user,
+        "message": f"Uploaded: {', '.join(uploaded_names)}",
+        "filenames": files_list,
     })
     
-@app.get("/upload/files/{filename}")
-async def get_file(filename: str, db: Session = Depends(get_db), request: Request = None):
+@app.get("/file/download/{filename}", response_class=FileResponse)
+async def get_file(
+    filename: str,
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
     user = auth_manager.get_current_user(request, db)
     if not user:
-        return RedirectResponse(url="/login")
+        return JSONResponse(content={"detail": "Not Authorized"},
+                            status_code=status.HTTP_401_UNAUTHORIZED)
     file_path = path.join(settings.UPLOAD_DIR, filename)
     if not path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path, filename=filename)
 
-@app.get("/upload/delete/{filename}")
-async def delete_file(filename: str, db: Session = Depends(get_db), request: Request = None):
+@app.get("/file/delete/{filename}", response_class=RedirectResponse)
+async def delete_file(
+    filename: str,
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
     user = auth_manager.get_current_user(request, db)
     if not user:
-        return RedirectResponse(url="/login")
+        return JSONResponse(content={"detail": "Not Authorized"},
+                            status_code=status.HTTP_401_UNAUTHORIZED)
     file_path = path.join(settings.UPLOAD_DIR, filename)
     if path.exists(file_path):
         os.remove(file_path)
     return RedirectResponse(url="/upload", status_code=302)
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_page(
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url=f"/login?back_url={request.url.path}")
+    return templates.TemplateResponse("chat.htm", {
+        "request": request,
+        "user": user,
+    })
+    
+@app.post("/chat", response_class=HTMLResponse)
+async def chat_request(
+    request: Request,
+    history: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    client = AzureOpenAI(
+        azure_endpoint=settings.AZUREAI_ENDPOINT_URL,
+        api_key=settings.AZUREAI_ENDPOINT_KEY,
+        api_version=settings.AZUREAI_API_VERSION,
+    )
+    response = client.chat.completions.create(
+        model=settings.AZUREAI_DEPLOYMENT,
+        messages=[
+            { "role": "system", "content": "You are a helpful assistant." },
+            { "role": "user", "content": history }
+        ],
+        max_tokens=4096,
+        temperature=1.0,
+        top_p=1.0
+    )
+    return templates.TemplateResponse("chat.htm", {
+        "request": request,
+        "user": user,
+        "response": response.choices[0].message.content
+    })
 
 
 logging.info(f"Application: {settings.APP_NAME} v{settings.APP_VERSION}")

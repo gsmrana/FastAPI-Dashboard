@@ -1,0 +1,16 @@
+{% extends "base.htm" %}
+{% block title %}Chat - Mediahub{% endblock %}
+{% block content %}
+<h2>Chat</h2>
+<form method="post" action="/chat">
+    <div class="mb-3">
+        <input name="history" class="form-control" placeholder="message" required>
+    </div>
+    <button type="submit" class="btn btn-info">Send</button>
+</form>
+{% if response %}
+<div class="mb-3"></div>
+    <p class="text-left mt-3">{{ response }}</p>
+</div>
+{% endif %}
+{% endblock %}

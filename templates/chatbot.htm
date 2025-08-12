@@ -1,0 +1,43 @@
+{% extends "base.htm" %}
+{% block title %}Aurora Chat - Mediahub{% endblock %}
+
+{% block style %}
+    <link rel="stylesheet" href="/static/css/chatbot.css">
+{% endblock %}
+
+{% block content %}
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="card shadow-sm chat-card">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="brand-dot"></div>
+                                <div>
+                                    <h5 class="mb-0">Chatbot</h5>
+                                </div>
+                            </div>
+                        <div>
+                            <button id="clearBtn" class="btn btn-sm btn-outline-secondary">Clear</button>
+                        </div>
+                    </div>
+
+                    <div id="chatWindow" class="card-body overflow-auto chat-window">
+                        <!-- Messages will be injected here -->
+                    </div>
+
+                    <div class="card-footer bg-white">
+                        <form id="chatForm" class="d-flex gap-2">
+                            <input id="promptInput" type="text" class="form-control" placeholder="Ask me anything..." autocomplete="off">
+                            <button id="sendBtn" class="btn btn-primary">Send</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script src="/static/js/chatbot.js"></script>
+{% endblock %}

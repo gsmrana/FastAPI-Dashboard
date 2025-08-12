@@ -1,0 +1,69 @@
+:root {
+  --accent: linear-gradient(90deg, #6a11cb, #2575fc);
+}
+body {
+  background: linear-gradient(180deg, #f6f8ff 0%, #ffffff 60%);
+}
+.chat-card {
+  border: none;
+  overflow: hidden;
+}
+.brand-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #6a11cb, #2575fc);
+  box-shadow: 0 4px 12px rgba(37, 117, 252, 0.18);
+}
+.chat-window {
+  height: 60vh;
+  min-height: 300px;
+  background: linear-gradient(
+    180deg,
+    rgba(250, 250, 255, 0.6),
+    rgba(245, 247, 255, 0.6)
+  );
+  border-radius: 8px;
+  padding: 1rem;
+}
+.message {
+  max-width: 100%;
+  margin-bottom: 0.9rem;
+  display: flex;
+  gap: 0.6rem;
+}
+.message .bubble {
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+.message.user {
+  justify-content: flex-end;
+}
+.message.user .bubble {
+  background: rgba(37, 117, 252, 0.95);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.message.bot .bubble {
+  background: white;
+  color: #111827;
+  border-bottom-left-radius: 4px;
+}
+.small-muted {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c7c7d9;
+  display: inline-block;
+  margin-right: 4px;
+}
+@media (max-width: 800px) {
+  .chat-window {
+    height: 55vh;
+  }
+}

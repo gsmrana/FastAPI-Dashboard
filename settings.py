@@ -35,6 +35,14 @@ class Settings:
     AZUREAI_API_VERSION = getenv("AZUREAI_API_VERSION", "")
     AZUREAI_DEPLOYMENT = getenv("AZUREAI_DEPLOYMENT", "")
     AZUREAI_EMBEDDING_DEPLOYMENT = getenv("AZUREAI_EMBEDDING_DEPLOYMENT", "")
+    
+    @staticmethod
+    def to_json():
+        return {
+            key: value
+            for key, value in Settings.__dict__.items()
+            if not key.startswith("__") and not callable(value)
+        }
 
 settings = Settings()
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

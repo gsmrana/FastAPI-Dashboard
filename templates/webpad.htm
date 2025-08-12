@@ -1,0 +1,42 @@
+{% extends "base.htm" %}
+{% block title %}Notepad - Mediahub{% endblock %}
+
+{% block style %}
+    <link rel="stylesheet" href="/static/css/chatbot.css">
+{% endblock %}
+
+{% block content %}
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="card shadow-sm chat-card">
+                    
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="brand-dot"></div>
+                                <div>
+                                    <h5 class="mb-0">Webpad</h5>
+                                </div>
+                                <div>
+                                    <label id="noteStatus"></label>
+                                </div>
+                        </div>
+                            <div>
+                                <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                                <button id="saveBtn" class="btn btn-success">Save</button>
+                            </div>
+                    </div>
+
+                    <div id="noteWindow" class="card-body overflow-auto chat-window">
+                        <textarea id="noteInput" type="text" name="textarea" class="form-control" placeholder="Enter your text here..." style="height: 540px;">{{ text }}</textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script src="/static/js/webpad.js"></script>
+{% endblock %}

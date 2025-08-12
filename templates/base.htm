@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}FastAPI App{% endblock %}</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico"> 
+    <title>{% block title %}FastAPI Base{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/style.css" />
+    {% block style %}
+    {% endblock %}
 </head>
+
 <body class="container">
-    
     <!-- Navigation Bar -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
@@ -22,19 +25,20 @@
             <li class="nav-item dropdown">
                 <a href="#" class="nav-link dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">Tools</a>
                 <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="/sites">Sites</a></li>
-                    <li><a class="dropdown-item" href="/notepad">Notepad</a></li>
-                    <li><a class="dropdown-item" href="/sites/upload">Upload Manager</a></li>
-                    <li><a class="dropdown-item" href="/sites/AriaNg-1.3.10">Download Manager</a></li>
+                    <li><a class="dropdown-item" href="/sites" target="_blank">Sites</a></li>
+                    <li><a class="dropdown-item" href="http://192.168.8.2:8090" target="_blank">qBittorrent</a></li>
+                    <li><a class="dropdown-item" href="http://192.168.8.2:5244" target="_blank">Media Manager</a></li>
+                    <li><a class="dropdown-item" href="http://192.168.8.2/sites/AriaNg-1.3.10" target="_blank">Download Manager</a></li>
                 </ul>
             </li>
             
             {% if user %}
             <li class="nav-item dropdown">
                 <a href="#" class="nav-link dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">{{ user.username }}</a>
-                <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="/chat">Chatbot</a></li>
-                    <li><a class="dropdown-item" href="/upload">Upload Files</a></li>
+                <ul class="dropdown-menu" aria-labelledby="userDropdown">                    
+                    <li><a class="dropdown-item" href="/chatbot">Chatbot</a></li>
+                    <li><a class="dropdown-item" href="/webpad">Webpad</a></li>
+                    <li><a class="dropdown-item" href="/upload">File Upload</a></li>
                     <li><a class="dropdown-item" href="/users">User Management</a></li>
                     <li><a class="dropdown-item" href="/logout">Logout</a></li>
                 </ul>
@@ -42,8 +46,11 @@
             {% else %}
                 <li><a href="/login" class="btn btn-primary">Login</a></li>
             {% endif %}
-            
         </ul>
+        </div>
+
+        <div>
+            <button id="theme-toggle" aria-label="Toggle Dark Mode">🌙</button>
         </div>
     </nav>
 

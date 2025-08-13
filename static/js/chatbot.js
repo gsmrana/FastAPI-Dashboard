@@ -3,6 +3,13 @@ const chatForm = document.getElementById("chatForm");
 const promptInput = document.getElementById("promptInput");
 const clearBtn = document.getElementById("clearBtn");
 
+function escapeHtml(unsafe) {
+  return unsafe
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function appendMessage(role, text, id) {
   const wrapper = document.createElement("div");
   wrapper.className = `message ${role}`;
@@ -28,36 +35,25 @@ function renderTypingPlaceholder(id) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-chatForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const prompt = promptInput.value.trim();
-  if (!prompt) return;
-  // show user message
-  appendMessage("user", escapeHtml(prompt));
-  promptInput.value = "";
-
-  // show bot typing
-  const placeholderId = "msg-" + Date.now();
-  renderTypingPlaceholder(placeholderId);
-
+async function requestResponse(prompt, placeholderId) {
   try {
-    const resp = await fetch("/api/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ "text": prompt }),
     });
 
-    if (!resp.ok) throw new Error("Network error");
+    if (!response.ok) throw new Error("Network error");
 
-    // assume JSON reply {reply: "..."}
-    const data = await resp.json();
-
-    // replace typing placeholder with actual text (with simple typing effect)
+    // replace typing placeholder with actual text
+    const reply = await response.json();
     const placeholder = document.getElementById(placeholderId);
     if (placeholder) {
       const bubble = placeholder.querySelector(".bubble");
       bubble.innerHTML = "";
-      typeText(bubble, data.reply);
+      bubble.innerText = reply;
+      bubble.parentElement.parentElement.scrollTop =
+        bubble.parentElement.parentElement.scrollHeight;
     }
   } catch (err) {
     const placeholder = document.getElementById(placeholderId);
@@ -67,31 +63,64 @@ chatForm.addEventListener("submit", async (e) => {
       placeholder.classList.add("bot");
     }
   }
+}
+
+async function requestStreamResponse(prompt, placeholderId) {
+    try {
+    const response = await fetch("/api/chat-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "text": prompt }),
+    });
+
+    if (!response.ok) throw new Error("Network error");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const placeholder = document.getElementById(placeholderId);
+    
+    if (placeholder) {
+      const bubble = placeholder.querySelector(".bubble");
+      bubble.innerHTML = "";      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bubble.innerText += decoder.decode(value, { stream: true })
+        bubble.parentElement.parentElement.scrollTop =
+          bubble.parentElement.parentElement.scrollHeight;
+      }
+    }
+  } catch (err) {
+    const placeholder = document.getElementById(placeholderId);
+    if (placeholder) {
+      const bubble = placeholder.querySelector(".bubble");
+      bubble.innerHTML = "⚠️ Error: " + escapeHtml(err.message);
+      placeholder.classList.add("bot");
+    }
+  }
+}
+
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const prompt = promptInput.value.trim();
+  if (!prompt) return;
+
+  // show user message
+  appendMessage("user", escapeHtml(prompt));
+  promptInput.value = "";
+
+  // show bot typing
+  const placeholderId = "msg-" + Date.now();
+  renderTypingPlaceholder(placeholderId);
+  
+  // get response from server
+  //requestResponse(prompt, placeholderId);
+  requestStreamResponse(prompt, placeholderId)
 });
 
 clearBtn.addEventListener("click", () => {
   chatWindow.innerHTML = "";
 });
-
-// small typing effect
-async function typeText(container, text, speed = 16) {
-  for (let i = 0; i <= text.length; i++) {
-    container.innerText = text.slice(0, i);
-    container.parentElement.parentElement.scrollTop =
-      container.parentElement.parentElement.scrollHeight;
-    await wait(speed);
-  }
-}
-function wait(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function escapeHtml(unsafe) {
-  return unsafe
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
 
 // allow Enter to send
 promptInput.addEventListener("keydown", (e) => {

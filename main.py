@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import json
 import shutil
 import uvicorn
 import logging
@@ -26,25 +25,33 @@ from fastapi.responses import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from openai import AzureOpenAI
 
 from database import SessionLocal, engine
-from models import Base, User
 from auth import auth_manager
+from models import (
+    Base, User, UserContent
+)
 
 
 app = FastAPI(title=settings.APP_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware, 
+    allow_credentials=True,
     allow_origins=['*'], 
     allow_methods=['*'], 
     allow_headers=['*'])
 
 templates = Jinja2Templates(directory="templates")
 Base.metadata.create_all(bind=engine)
+webpad_storage_text = ""
+aiclient = AzureOpenAI(
+    azure_endpoint=settings.AZUREAI_ENDPOINT_URL,
+    api_key=settings.AZUREAI_ENDPOINT_KEY,
+    api_version=settings.AZUREAI_API_VERSION,
+)
 
 # Dependency to get DB session
 def get_db():
@@ -203,16 +210,21 @@ async def user_delete(
     db.commit()
     return RedirectResponse("/users", status_code=status.HTTP_302_FOUND)
 
-@app.get("/api/system", response_class=JSONResponse)
-async def system_info(
+@app.get("/environment", response_class=HTMLResponse)
+async def settings_page(
     request: Request, 
     db: Session = Depends(get_db)
 ):
     user = auth_manager.get_current_user(request, db)
     if not user:
-        return JSONResponse(
-            content={"detail": "Not Authorized"}, 
-            status_code=status.HTTP_401_UNAUTHORIZED)
+        return RedirectResponse(url=f"/login?back_url={request.url.path}")
+    return templates.TemplateResponse("environment.htm", {
+        "request": request,
+        "user": user,
+        "settings": settings.to_json()
+    })
+
+def system_info():
     return {
         "Node": platform.node(),
         "Platform": sys.platform,
@@ -221,63 +233,21 @@ async def system_info(
         "Arch": platform.machine(),
         "CPU": platform.processor(),  
         "Python": platform.python_version(),
-    }
-
-@app.get("/api/settings", response_class=JSONResponse)
-async def app_settings(
+    }  
+    
+@app.get("/system", response_class=HTMLResponse)
+async def system_page(
     request: Request, 
     db: Session = Depends(get_db)
 ):
     user = auth_manager.get_current_user(request, db)
     if not user:
-        return JSONResponse(
-            content={"detail": "Not Authorized"},
-            status_code=status.HTTP_401_UNAUTHORIZED)
-    return settings.to_json()
-
-class NoteRequest(BaseModel):
-    text: str
-
-webpad_storage_text = ""
-
-@app.get("/webpad", response_class=HTMLResponse)
-async def webpad_page(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    user = auth_manager.get_current_user(request, db)
-    return templates.TemplateResponse("webpad.htm", {
+        return RedirectResponse(url=f"/login?back_url={request.url.path}")  
+    return templates.TemplateResponse("system.htm", {
         "request": request,
         "user": user,
-        "text": webpad_storage_text
+        "sys_info": system_info()
     })
-
-@app.post("/webpad/save", response_class=RedirectResponse)
-async def webpad_save(textarea: str = Form(...)):
-    global webpad_storage_text
-    webpad_storage_text = textarea
-    return RedirectResponse("/webpad", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/webpad/clear", response_class=RedirectResponse)
-async def webpad_clear():
-    global webpad_storage_text
-    webpad_storage_text = ""
-    return RedirectResponse("/webpad", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/api/webpad", response_class=JSONResponse)
-async def webpad_save(
-    request: Request,
-    notereq: NoteRequest,
-    db: Session = Depends(get_db)
-):
-    user = auth_manager.get_current_user(request, db)
-    if not user:
-        return JSONResponse(
-            content={"detail": "Not Authorized"},
-            status_code=status.HTTP_401_UNAUTHORIZED)
-    global webpad_storage_text
-    webpad_storage_text = notereq.text
-    return {"reply": "ok"}
 
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(
@@ -359,17 +329,44 @@ async def delete_file(
         os.remove(file_path)
     return RedirectResponse(url="/upload", status_code=302)
 
-class ChatRequest(BaseModel):
-    prompt: str
+@app.get("/webpad", response_class=HTMLResponse)
+async def webpad_page(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    return templates.TemplateResponse("webpad.htm", {
+        "request": request,
+        "user": user,
+        "text": webpad_storage_text
+    })
 
-class ChatResponse(BaseModel):
-    reply: str
+@app.post("/webpad/save", response_class=RedirectResponse)
+async def webpad_save(textarea: str = Form(...)):
+    global webpad_storage_text
+    webpad_storage_text = textarea
+    return RedirectResponse("/webpad", status_code=status.HTTP_303_SEE_OTHER)
 
-aiclient = AzureOpenAI(
-    azure_endpoint=settings.AZUREAI_ENDPOINT_URL,
-    api_key=settings.AZUREAI_ENDPOINT_KEY,
-    api_version=settings.AZUREAI_API_VERSION,
-)
+@app.post("/webpad/clear", response_class=RedirectResponse)
+async def webpad_clear():
+    global webpad_storage_text
+    webpad_storage_text = ""
+    return RedirectResponse("/webpad", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/api/webpad", response_class=JSONResponse)
+async def webpad_save(
+    request: Request,
+    userContent: UserContent,
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return JSONResponse(
+            content={"detail": "Not Authorized"},
+            status_code=status.HTTP_401_UNAUTHORIZED)
+    global webpad_storage_text
+    webpad_storage_text = userContent.text
+    return {"reply": "ok"}
 
 @app.get("/chatbot", response_class=HTMLResponse)
 async def chat_page(
@@ -384,37 +381,73 @@ async def chat_page(
         "user": user,
     })
 
-@app.post('/api/chat', response_model=ChatResponse)
+@app.post('/api/chat')
 async def chat_endpoint(
     request: Request,
-    chatreq: ChatRequest,
+    userContent: UserContent,
     db: Session = Depends(get_db)
 ):
-    if not chatreq.prompt.strip():
+    if not userContent.text.strip():
         raise HTTPException(
             detail='Empty prompt!', 
             status_code=status.HTTP_400_BAD_REQUEST)
-    
     user = auth_manager.get_current_user(request, db)
     if not user:
         return JSONResponse(
             content={"detail": "Not Authorized"},
             status_code=status.HTTP_401_UNAUTHORIZED)
-
     response = aiclient.chat.completions.create(
         model=settings.AZUREAI_DEPLOYMENT,
         messages=[
             { "role": "system", "content": "You are a helpful assistant." },
-            { "role": "user", "content": chatreq.prompt }
+            { "role": "user", "content": userContent.text }
         ],
         max_tokens=4096,
         temperature=1.0,
         top_p=1.0
     )    
-    reply = "No response!"
+    content = "No response!"
     if response.choices:
-        reply = response.choices[0].message.content
-    return {"reply": reply}
+        content = response.choices[0].message.content
+    return content
+
+@app.post('/api/chat-stream')
+async def chat_stream_endpoint(
+    request: Request,
+    userContent: UserContent,
+    db: Session = Depends(get_db)
+):
+    if not userContent.text.strip():
+        raise HTTPException(
+            detail='Empty prompt!', 
+            status_code=status.HTTP_400_BAD_REQUEST)
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return JSONResponse(
+            content={"detail": "Not Authorized"},
+            status_code=status.HTTP_401_UNAUTHORIZED)        
+    
+    def chat_stream():
+        response = aiclient.chat.completions.create(
+            model=settings.AZUREAI_DEPLOYMENT,
+            messages=[
+                { "role": "system", "content": "You are a helpful assistant." },
+                { "role": "user", "content": userContent.text }
+            ],
+            max_tokens=4096,
+            temperature=1.0,
+            top_p=1.0,
+            stream=True
+        )         
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                yield content   # plain fetch-stream  
+            
+    return StreamingResponse(
+        chat_stream(),
+        media_type="text/plain")
+
 
 logging.info(f"Application: {settings.APP_NAME} v{settings.APP_VERSION}")
 logging.info(f"APP_PORT: {settings.APP_PORT}, DEBUG: {settings.APP_DEBUG}, " + 

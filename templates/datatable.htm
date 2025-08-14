@@ -1,10 +1,10 @@
 {% extends "base.htm" %}
-{% block title %}Environment - Mediahub{% endblock %}
+{% block title %}{{ title }} - Mediahub{% endblock %}
 
 {%block content %}
-<h1 class="h4">Environment</h1>
+<h1 class="h4">{{ title }}</h1>
 <div class="table-responsive">
-  <table class="table table-bordered table-hover align-middle m-0" id="dataTable">
+  <table class="table table-bordered align-middle m-0" id="dataTable">
     <thead class="table-light">
         <tr>
             <th data-key="key" class="sortable">Key</th>
@@ -12,7 +12,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for key, value in settings.items() %}
+        {% for key, value in datatable.items() %}
         <tr> 
             <td>{{ key }}</td>
             <td>{{ value }}</td>

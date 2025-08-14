@@ -112,8 +112,8 @@ async def login(
 async def register_page(request: Request):
     return templates.TemplateResponse("register.htm", {
         "request": request, 
-        "msg": "", 
-        "register": True
+        "msg": "",
+        "title": "Register",
     })
 
 @app.post("/register", response_class=RedirectResponse)
@@ -127,7 +127,7 @@ async def register(
         return templates.TemplateResponse("register.htm", {
             "request": request,
             "msg": "User exists", 
-            "register": True
+            "title": "Register",
         })
     new_user = User(username=username, hashed_password=auth_manager.hash_password(password))
     db.add(new_user)
@@ -171,8 +171,7 @@ async def user_update_page(
     return templates.TemplateResponse("register.htm", {
         "request": request, 
         "user": user,
-        "msg": "Upadte user information", 
-        "register": True
+        "title": "Update",
     })
 
 @app.post("/user/update", response_class=RedirectResponse)
@@ -218,22 +217,12 @@ async def settings_page(
     user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url=f"/login?back_url={request.url.path}")
-    return templates.TemplateResponse("environment.htm", {
+    return templates.TemplateResponse("datatable.htm", {
         "request": request,
         "user": user,
-        "settings": settings.to_json()
+        "title": "Environment Info",
+        "datatable": settings.to_json()
     })
-
-def system_info():
-    return {
-        "Node": platform.node(),
-        "Platform": sys.platform,
-        "OS": platform.platform(),
-        "Version": platform.version(),
-        "Arch": platform.machine(),
-        "CPU": platform.processor(),  
-        "Python": platform.python_version(),
-    }  
     
 @app.get("/system", response_class=HTMLResponse)
 async def system_page(
@@ -243,10 +232,20 @@ async def system_page(
     user = auth_manager.get_current_user(request, db)
     if not user:
         return RedirectResponse(url=f"/login?back_url={request.url.path}")  
-    return templates.TemplateResponse("system.htm", {
+    sys_info = {
+        "Node": platform.node(),
+        "Platform": sys.platform,
+        "OS": platform.platform(),
+        "Version": platform.version(),
+        "Arch": platform.machine(),
+        "CPU": platform.processor(),  
+        "Python": platform.python_version(),
+    }    
+    return templates.TemplateResponse("datatable.htm", {
         "request": request,
         "user": user,
-        "sys_info": system_info()
+        "title": "System Info",
+        "datatable": sys_info
     })
 
 @app.get("/upload", response_class=HTMLResponse)

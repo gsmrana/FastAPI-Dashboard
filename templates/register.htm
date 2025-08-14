@@ -1,24 +1,26 @@
 {% extends "base.htm" %}
-{% block title %}Register - Mediahub{% endblock %}
+{% block title %}{{ title }} - Mediahub{% endblock %}
+
 {% block content %}
-<h2>{% if register %}Register{% else %}Login{% endif %}</h2>
-<form method="post" action="{% if register %}/register{% else %}/login{% endif %}">
+<h2>{{ title }}</h2>
+<form method="post" action="/{ title }">
     <div class="mb-3">
         <input name="username" class="form-control" placeholder="Username" required>
     </div>
     <div class="mb-3">
         <input name="password" type="password" class="form-control" placeholder="Password" required>
     </div>
-    <button type="submit" class="btn btn-success">{% if register %}Register{% else %}Login{% endif %}</button>
+    <button type="submit" class="btn btn-success">{{ title }}</button>
 </form>
+
 {% if msg %}
-<p class="text-danger mt-3">{{ msg }}</p>
+    <p class="text-danger mt-3">{{ msg }}</p>
 {% endif %}
+
 <p class="mt-3">
-    {% if not register %}
-        <a href="/register">Create new account</a>
-    {% else %}
-        <a href="/login">Already have account?</a>
-    {% endif %}
+    <a href="/register">Create new account</a>
+</p>
+<p class="mt-3">
+    <a href="/login">Already have account?</a>
 </p>
 {% endblock %}

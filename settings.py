@@ -38,11 +38,15 @@ class Settings:
     
     @staticmethod
     def to_json():
-        return {
-            key: value
-            for key, value in Settings.__dict__.items()
-            if not key.startswith("__") and not callable(value)
-        }
+        json = {}
+        for key, value in Settings.__dict__.items():
+            if key.startswith("__") or callable(value):
+                continue
+            if "key" in key.lower() and len(value) >= 8:
+                masked = value[:4] + "*"*8 + value[-4:]
+                value = f"[{len(value)}] {masked}"
+            json[key] = value
+        return json
 
 settings = Settings()
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

@@ -1,31 +1,42 @@
-# Mediahub Dashboard
-A FastAPI based dashboard app for media server.
+# FastAPI Dashboard
+A FastAPI based dashboard WebApp.
 
-## Setup and Run
-1. Create a python virtual environment and activate it.
+## Install Python
+https://www.python.org/downloads/
+
+Linux
 ```
-sudo apt install python3-venv python3-pip -y
-cd /srv/Mediahub-Dashboard
-python3 -m venv mediahub-env
-source mediahub-env/bin/activate
-pip install --upgrade pip
+sudo apt install python3 python3-pip python3-venv -y
 ```
 
-2. Install the required python packages.
+## Environment setup
+1. Install required packages in a Python virtual environment.
+
+Windows
 ```
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Test standalone app from commnad line.
+Linux
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip3 install -r requirements.txt
+```
+
+## Run the WebApp
+1. Test the standalone app from the command line.
 ```
 uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
-4. Create a systemd daemon and run it.
+2. Create a systemd daemon and run it.
 ```
 sudo cp mediahub.service /etc/systemd/system/mediahub-daemon.service
 sudo systemctl daemon-reload
 sudo systemctl restart mediahub-daemon
 ```
 
-5. Navigate to: **http://localhost:3000**
+3. Navigate to: **http://localhost:3000**

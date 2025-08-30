@@ -34,9 +34,9 @@ uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 2. Create a systemd daemon and run it.
 ```
-sudo cp mediahub.service /etc/systemd/system/mediahub-daemon.service
+sudo cp dashboard.service /etc/systemd/system/dashboard-daemon.service
 sudo systemctl daemon-reload
-sudo systemctl restart mediahub-daemon
+sudo systemctl restart dashboard-daemon
 ```
 
 3. Navigate to: **http://localhost:3000**

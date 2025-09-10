@@ -264,16 +264,8 @@ async def upload_page(
         "username": user.username,
     })
     
-@app.post("/file/upload", response_class=HTMLResponse)
-async def handle_upload(
-    request: Request,
-    files: list[UploadFile] = File(...),
-    db: Session = Depends(get_db)
-):
-    user = auth_manager.get_current_user(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    uploaded_names = []
+def copy_uploaded_files(files):
+    filenames = []
     for file in files:
         # rename if file already exists
         file_path = path.join(settings.UPLOAD_DIR, file.filename)
@@ -286,8 +278,19 @@ async def handle_upload(
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        uploaded_names.append(file.filename)
-
+        filenames.append(file.filename)
+    return filenames
+    
+@app.post("/file/upload", response_class=HTMLResponse)
+async def handle_upload(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    user = auth_manager.get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    uploaded_names = copy_uploaded_files(files)
     files_list = os.listdir(settings.UPLOAD_DIR)
     return templates.TemplateResponse("upload.htm", {
         "request": request,
@@ -295,6 +298,14 @@ async def handle_upload(
         "message": f"Uploaded: {', '.join(uploaded_names)}",
         "filenames": files_list,
     })
+
+@app.post("/public/file/upload", response_class=JSONResponse)
+async def handle_upload_public(
+    request: Request,
+    files: list[UploadFile] = File(...)
+):
+    copy_uploaded_files(files)
+    return {"detail": "ok"}
     
 @app.get("/file/download/{filename}", response_class=FileResponse)
 async def get_file(

@@ -1,9 +1,8 @@
-dotenv
-fastapi
-itsdangerous
-jinja2
-openai
-passlib[bcrypt]
-python-multipart
-sqlalchemy
-uvicorn
+dotenv==0.9.9
+fastapi==0.117.1
+itsdangerous==2.2.0
+openai==1.108.1
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.20
+sqlalchemy==2.0.43
+uvicorn==0.36.0
